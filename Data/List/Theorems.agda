@@ -2,10 +2,12 @@
 
 module Data.List.Theorems where
 
+open import Data.Empty
 open import Data.Nat
 open import Data.Nat.Theorems
 open import Data.List
 open import Relation.Nullary
+open import Relation.Binary
 open import Relation.Binary.PropositionalEquality
 
 -- support for equational reasoning
@@ -67,3 +69,23 @@ lem-reverse-app (x ∷ l1) l2 = begin
                                (reverse l2 ++ reverse l1) ++ (x ∷ [])  ≡⟨ sym (lem-app-assoc (reverse l2) (reverse l1) (x ∷ [])) ⟩ 
                                 reverse l2 ++ (reverse l1 ++ (x ∷ [])) ≡⟨ cong (λ l → reverse l2 ++ l) (sym (lem-reverse-head x l1)) ⟩ 
                                (reverse l2 ++ reverse (x ∷ l1)) ∎ 
+
+{- A membership relation -}
+
+infix 4 _∈_
+
+data _∈_ {A : Set} : (a : A) → (xs : List A) → Set where
+  ∈-take : (a : A)   → (xs : List A) → a ∈ a ∷ xs
+  ∈-drop : (a x : A) → (xs : List A) → a ∈ xs → a ∈ x ∷ xs
+
+-- if equality is decidable for A then list membership is decidable
+member : {A : Set} → (a : A) → (l : List A) → Decidable {A = A} (_≡_) → Dec(a ∈ l)
+member a [] eq = no (λ ())
+member a (x ∷ xs) eq with inspect (eq a x)
+member a (x ∷ xs) eq | yes p with-≡ eq' rewrite p = yes (∈-take x xs) 
+member a (x ∷ xs) eq | no ¬p with-≡ eq' with member a xs eq
+member a (x ∷ xs) eq | no ¬p with-≡ eq' | yes p = yes (∈-drop a x xs p)
+member a (x ∷ xs) eq | no ¬p' with-≡ eq' | no ¬p = no (imp a x xs ¬p ¬p') where
+  imp : {A : Set}(a x : A)(xs : List A) → (¬ a ∈ xs) → (¬ a ≡ x) → ¬ a ∈ x ∷ xs
+  imp .x' x' xs' ¬axs ¬ax (∈-take .x' .xs') = ¬ax refl
+  imp a' x' xs' ¬axs ¬ax (∈-drop .a' .x' .xs' y) = ¬axs y

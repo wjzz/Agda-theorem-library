@@ -3,6 +3,8 @@ module Data.Nat.Theorems where
 open import Data.Nat hiding (compare)
 open import Data.Nat.Compare
 open import Data.Sum
+
+open import Relation.Binary
 open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary
 
@@ -175,3 +177,45 @@ lem-compare-eq {zero} {suc n} ()
 lem-compare-eq {suc n} {zero} ()
 lem-compare-eq {suc n} {suc n'} p = cong suc (lem-compare-eq p)
 
+
+{-
+  -----------------------------------
+       Properties of ⊔ and <
+  -----------------------------------
+-}
+
+lem-≤-trans : Transitive _≤_
+lem-≤-trans = Poset.trans (DecTotalOrder.poset decTotalOrder)
+
+lem-≤-suc : ∀ (n : ℕ) → n ≤ suc n
+lem-≤-suc zero = z≤n
+lem-≤-suc (suc n) = s≤s (lem-≤-suc n)
+
+lem-<-trans : Transitive _<_
+lem-<-trans {j = suc n} (s≤s m≤n) (s≤s n≤k) = s≤s (lem-≤-trans (lem-≤-trans m≤n (lem-≤-suc n)) n≤k)
+lem-<-trans {j = zero} () p2
+
+lem-⊔ : ∀ (n m : ℕ) → n ⊔ m ≡ n ⊎ n ⊔ m ≡ m
+lem-⊔ zero m = inj₂ refl
+lem-⊔ (suc n) zero = inj₁ refl
+lem-⊔ (suc n) (suc n') with lem-⊔ n n' 
+lem-⊔ (suc n) (suc n') | inj₁ x = inj₁ (cong suc x)
+lem-⊔ (suc n) (suc n') | inj₂ y = inj₂ (cong suc y)
+
+lem-≤-l+ : ∀ (m p q : ℕ) → m ≤ q → m ≤ p + q
+lem-≤-l+ m zero q pr = pr
+lem-≤-l+ .0 (suc n) q z≤n = z≤n
+lem-≤-l+ .(suc m) (suc n) .(suc n') (s≤s {m} {n'} m≤n) = s≤s (≤-cong (lem-≤-l+ m (suc n) n' m≤n) (lem-plus-s n n')) where
+  ≤-cong : ∀ {x y z} → x ≤ y → y ≡ z → x ≤ z
+  ≤-cong x<=y refl = x<=y
+
+lem-≤-+r : ∀ (m p q : ℕ) → m ≤ q → m ≤ q + p
+lem-≤-+r .0 n q z≤n = z≤n
+lem-≤-+r .(suc m) zero .(suc n) (s≤s {m} {n} m≤n) = s≤s (lem-≤-+r m zero n m≤n)
+lem-≤-+r .(suc m) (suc n) .(suc n') (s≤s {m} {n'} m≤n) = s≤s (lem-≤-+r m (suc n) n' m≤n)
+
+
+lem-<-cong : ∀ {n m p q} → n < p → m < q → (n ⊔ m) < p + q
+lem-<-cong {n} {m} p1 p2 with lem-⊔ n m 
+lem-<-cong {n} {m} {p} {q} p1 p2 | inj₁ x rewrite x = lem-≤-+r (suc n) q p p1
+lem-<-cong {n} {m} {p} {q} p1 p2 | inj₂ y rewrite y = lem-≤-l+ (suc m) p q p2
