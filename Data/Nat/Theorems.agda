@@ -184,6 +184,9 @@ lem-compare-eq {suc n} {suc n'} p = cong suc (lem-compare-eq p)
   -----------------------------------
 -}
 
+lem-≤-refl : Reflexive _≤_
+lem-≤-refl = Poset.refl (DecTotalOrder.poset decTotalOrder)
+
 lem-≤-trans : Transitive _≤_
 lem-≤-trans = Poset.trans (DecTotalOrder.poset decTotalOrder)
 
@@ -219,3 +222,26 @@ lem-<-cong : ∀ {n m p q} → n < p → m < q → (n ⊔ m) < p + q
 lem-<-cong {n} {m} p1 p2 with lem-⊔ n m 
 lem-<-cong {n} {m} {p} {q} p1 p2 | inj₁ x rewrite x = lem-≤-+r (suc n) q p p1
 lem-<-cong {n} {m} {p} {q} p1 p2 | inj₂ y rewrite y = lem-≤-l+ (suc m) p q p2
+
+{-
+  -----------------------------------
+     Converting between < and ≤
+  -----------------------------------
+-}
+
+lem-≤-cases : ∀ (n m : ℕ) → n ≤ m → n < m ⊎ n ≡ m
+lem-≤-cases .0 zero z≤n = inj₂ refl
+lem-≤-cases .0 (suc n) z≤n = inj₁ (s≤s z≤n)
+lem-≤-cases .(suc m) .(suc n) (s≤s {m} {n} m≤n) with lem-≤-cases m n m≤n
+... | inj₁ p = inj₁ (s≤s p)
+... | inj₂ r = inj₂ (cong suc r)
+
+{- 
+  ------------------------------------
+            Properties of _≟_
+  ------------------------------------
+-}
+
+lem-≟-refl : ∀ (n : ℕ) → (n ≟ n) ≡ yes refl
+lem-≟-refl zero = refl
+lem-≟-refl (suc n) rewrite lem-≟-refl n = refl
