@@ -1,5 +1,6 @@
 module Data.Nat.Theorems where
 
+open import Data.Empty
 open import Data.Nat hiding (compare)
 open import Data.Nat.Compare
 open import Data.Sum
@@ -245,3 +246,6 @@ lem-≤-cases .(suc m) .(suc n) (s≤s {m} {n} m≤n) with lem-≤-cases m n m�
 lem-≟-refl : ∀ (n : ℕ) → (n ≟ n) ≡ yes refl
 lem-≟-refl zero = refl
 lem-≟-refl (suc n) rewrite lem-≟-refl n = refl
+
+lem-less-means-no : ∀ (n m : ℕ) → (n < m) → (p : n ≡ m) → ⊥
+lem-less-means-no .(suc n) .(suc n) (s≤s {.(suc n)} {n} m≤n) refl = lem-less-means-no n n m≤n refl
