@@ -237,6 +237,12 @@ lem-≤-cases .(suc m) .(suc n) (s≤s {m} {n} m≤n) with lem-≤-cases m n m�
 ... | inj₁ p = inj₁ (s≤s p)
 ... | inj₂ r = inj₂ (cong suc r)
 
+-- bad naming, but I have no better idea
+lem-≤-cases-ext : ∀ (n m : ℕ) → n ≤ m → n ≢ m → suc n ≤ m
+lem-≤-cases-ext n m n≤m n≡m with lem-≤-cases n m n≤m
+lem-≤-cases-ext n m n≤m n≡m | inj₁ n<m = n<m
+lem-≤-cases-ext n m n≤m n≡m | inj₂ n=m = ⊥-elim (n≡m n=m)
+
 {- 
   ------------------------------------
             Properties of _≟_
