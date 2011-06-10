@@ -9,6 +9,15 @@ open import Relation.Binary
 open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary
 
+-------------------------------------
+--  Properties of equlity on nats  --
+-------------------------------------
+
+lem-suc-eq : ∀ {n k : ℕ} → suc n ≡ suc k → n ≡ k
+lem-suc-eq refl = refl
+
+{- BASE arith lem-suc-eq -}
+
 {- 
    ----------------------------------
        Properties of addition (_+_) 
@@ -37,6 +46,9 @@ lem-plus-comm (suc n) m = trans (cong suc (lem-plus-comm n m)) (lem-plus-s m n)
 lem-plus-assoc : (k l n : ℕ) → (k + l) + n ≡ k + (l + n)
 lem-plus-assoc zero l n = refl
 lem-plus-assoc (suc n) l n' = cong suc (lem-plus-assoc n l n')
+
+{- BASE arith lem-plus-n-0 lem-plus-1-n lem-plus-s lem-plus-comm lem-plus-assoc -}
+
 
 {- 
   ----------------------------------------
@@ -224,6 +236,8 @@ lem-<-cong {n} {m} p1 p2 with lem-⊔ n m
 lem-<-cong {n} {m} {p} {q} p1 p2 | inj₁ x rewrite x = lem-≤-+r (suc n) q p p1
 lem-<-cong {n} {m} {p} {q} p1 p2 | inj₂ y rewrite y = lem-≤-l+ (suc m) p q p2
 
+{- BASE arith lem-≤-refl lem-≤-trans lem-≤-suc lem-<-trans -}
+
 {-
   -----------------------------------
      Converting between < and ≤
@@ -255,3 +269,16 @@ lem-≟-refl (suc n) rewrite lem-≟-refl n = refl
 
 lem-less-means-no : ∀ (n m : ℕ) → (n < m) → (p : n ≡ m) → ⊥
 lem-less-means-no .(suc n) .(suc n) (s≤s {.(suc n)} {n} m≤n) refl = lem-less-means-no n n m≤n refl
+
+---------------------------------------
+--  Proof irrelevance for orderings  --
+---------------------------------------
+
+lem-≤-irrelv : ∀ {n k : ℕ} → {p1 : n ≤ k} → {p2 : n ≤ k} → p1 ≡ p2
+lem-≤-irrelv {p1 = z≤n} {p2 = z≤n} = refl
+lem-≤-irrelv {p1 = s≤s m≤n} {p2 = s≤s m≤n'} rewrite lem-≤-irrelv {p1 = m≤n} {p2 = m≤n'} = refl
+
+lem-<-irrelv : ∀ {n k : ℕ} → {p1 : n < k} → {p2 : n < k} → p1 ≡ p2
+lem-<-irrelv = lem-≤-irrelv
+
+{- BASE irrelv lem-≤-irrelv lem-<-irrelv -}
