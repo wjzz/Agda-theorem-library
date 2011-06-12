@@ -7,15 +7,20 @@ open import Data.Nat
 open import Data.Nat.Theorems
 open import Data.List
 open import Data.Product 
+open import Data.Sum
+open import Function
 
 open import Relation.Nullary
 open import Relation.Binary
 open import Relation.Binary.PropositionalEquality
 
--- support for equational reasoning
-open ≡-Reasoning -- \qed, ≡⟨ ⟩ \==\<
+open ≡-Reasoning
 
-{- BASE global ⊥-elim sym trans -}
+{- BASE global ⊥-elim -}
+
+-------------------------------------------------
+--  Properties of the standard list functions  --
+-------------------------------------------------
 
 {- length properties -}
 
@@ -73,10 +78,9 @@ lem-reverse-app (x ∷ l1) l2 = begin
                                 reverse l2 ++ (reverse l1 ++ (x ∷ [])) ≡⟨ cong (λ l → reverse l2 ++ l) (sym (lem-reverse-head x l1)) ⟩ 
                                (reverse l2 ++ reverse (x ∷ l1)) ∎ 
 
-------------------------------------------
---  List membership relation and query  --
-------------------------------------------
-
+-------------------------------------------------
+--  List membership relation and member query  --
+-------------------------------------------------
 
 infix 4 _∈_
 
@@ -84,20 +88,79 @@ data _∈_ {A : Set} : (a : A) → (xs : List A) → Set where
   ∈-take : {a : A}   {xs : List A} → a ∈ a ∷ xs
   ∈-drop : {a x : A} {xs : List A} → a ∈ xs → a ∈ x ∷ xs
 
-lem-neq-ncons-inn : {A : Set} → (a x : A)(xs : List A) → (¬ a ∈ xs) → (¬ a ≡ x) → ¬ a ∈ x ∷ xs
-lem-neq-ncons-inn .x' x' xs' ¬axs ¬ax ∈-take = ¬ax refl
-lem-neq-ncons-inn a' x' xs' ¬axs ¬ax (∈-drop y) = ¬axs y
 
--- if equality is decidable for A then list membership is decidable
+_∉_ : {A : Set} (a : A)(l : List A) → Set
+a ∉ l = ¬ (a ∈ l)
 
-member : {A : Set} → (a : A) → (l : List A) → (eq : Decidable {A = A} _≡_) → Dec(a ∈ l)
+
+-- lemmas for situations where pattern matching doesn't work
+
+lem-∈-eq : ∀ {A : Set} (a a' : A)(xs : List A) → a ≡ a' → a ∈ a' ∷ xs
+lem-∈-eq .a' a' xs refl = ∈-take
+
+lem-∉-neq-tail : ∀ {A : Set} (a a' : A)(xs : List A) → a ≢ a' → a ∉ xs → a ∉ (a' ∷ xs)
+lem-∉-neq-tail .a' a' xs neq a∉xs (∈-take {.a'} {.xs}) = neq refl
+lem-∉-neq-tail a a' xs neq a∉xs (∈-drop y) = a∉xs y
+
+lem-∉-cons : ∀ {A : Set} (a a' : A)(xs : List A) → a ∉ (a' ∷ xs) → a ≢ a'
+lem-∉-cons a a' xs x eq rewrite eq = x (∈-take)
+
+{- BASE in lem-∈-eq lem-∉-neq-tail lem-∉-cons -}
+
+
+-- extension lemmas
+
+lem-∈-extend-l : ∀ {A : Set} (a : A)(xs ys : List A) → a ∈ xs → a ∈ ys ++ xs
+lem-∈-extend-l a xs [] inn = inn
+lem-∈-extend-l a xs (x ∷ xs') inn = ∈-drop (lem-∈-extend-l a xs xs' inn)
+
+lem-∈-extend-r : ∀ {A : Set} (a : A)(xs ys : List A) → a ∈ xs → a ∈ xs ++ ys
+lem-∈-extend-r a .(a ∷ xs) ys (∈-take {.a} {xs}) = ∈-take
+lem-∈-extend-r a .(x ∷ xs) ys (∈-drop {.a} {x} {xs} y) = ∈-drop (lem-∈-extend-r a xs ys y)
+
+-- ∉ and ++
+
+lem-∉-app-l : ∀ {A : Set} (a : A)(xs ys : List A) → a ∉ (xs ++ ys) → a ∉ xs
+lem-∉-app-l a [] ys p ()
+lem-∉-app-l a (x ∷ xs) ys nin axs = nin (lem-∈-extend-r a (x ∷ xs) ys axs) 
+
+lem-∉-app-r : ∀ {A : Set} (a : A)(xs ys : List A) → a ∉ (xs ++ ys) → a ∉ ys
+lem-∉-app-r a xs ys nin ays = nin (lem-∈-extend-l a ys xs ays)
+
+lem-∈-inside : ∀ {A : Set}(a : A) (xs ys : List A) → a ∈ xs ++ (a ∷ ys)
+lem-∈-inside a [] ys = ∈-take
+lem-∈-inside a (x ∷ xs) ys = ∈-drop (lem-∈-inside a xs ys)
+
+lem-∈-neq : ∀ {A : Set}(a a' : A) (xs : List A) → a ≢ a' → a ∈ a' ∷ xs → a ∈ xs
+lem-∈-neq .a' a' xs neq (∈-take {.a'} {.xs}) = ⊥-elim (neq refl)
+lem-∈-neq a a' xs neq (∈-drop y) = y
+
+lem-∈-app : ∀ {A : Set}(a : A) (xs ys : List A) → (cmp : ∀ (a1 a2 : A) → Dec (a1 ≡ a2)) → a ∈ xs ++ ys → a ∈ xs ⊎ a ∈ ys
+lem-∈-app a [] ys cmp inn = inj₂ inn
+lem-∈-app a (x ∷ xs) ys cmp inn with cmp a x
+lem-∈-app a (x ∷ xs) ys cmp inn | yes p rewrite p = inj₁ ∈-take
+lem-∈-app .x (x ∷ xs) ys cmp (∈-take {.x} {.(xs ++ ys)}) | no ¬p = inj₁ ∈-take
+lem-∈-app a (x ∷ xs) ys cmp (∈-drop y) | no ¬p with lem-∈-app a xs ys cmp y
+lem-∈-app a (x ∷ xs) ys cmp (∈-drop y) | no ¬p | inj₁ l = inj₁ (∈-drop l)
+lem-∈-app a (x ∷ xs) ys cmp (∈-drop y) | no ¬p | inj₂ r = inj₂ r
+
+lem-exists-find : ∀ {A : Set} (a : A)(l : List A) → a ∈ l → ∃₂ (λ (xs ys : List A) → l ≡ xs ++ [ a ] ++ ys)
+lem-exists-find a .(a ∷ xs) (∈-take {.a} {xs}) = [] , xs , refl
+lem-exists-find a .(x ∷ xs) (∈-drop {.a} {x} {xs} y) with lem-exists-find a xs y
+lem-exists-find a .(x ∷ xs) (∈-drop {.a} {x} {xs} y) | ys , zs , p = x ∷ ys , zs , cong (_∷_ x) p
+
+{- BASE in lem-∉-app-l lem-∉-app-r lem-∈-app lem-∈-neq lem-∈-inside lem-∈-extend-l lem-∈-extend-r lem-exists-find -}
+
+
+-- decidable list membership
+
+member : {A : Set} → (a : A) → (l : List A) → (eq : Decidable {A = A} _≡_) → Dec (a ∈ l)
 member a [] eq = no (λ ())
 member a (x ∷ xs) eq with inspect (eq a x)
 member a (x ∷ xs) eq | yes p with-≡ eq' rewrite p = yes ∈-take
 member a (x ∷ xs) eq | no ¬p with-≡ eq' with member a xs eq
 member a (x ∷ xs) eq | no ¬p with-≡ eq'  | yes p = yes (∈-drop p)
-member a (x ∷ xs) eq | no ¬p' with-≡ eq' | no ¬p = no (lem-neq-ncons-inn a x xs ¬p ¬p')
-
+member a (x ∷ xs) eq | no ¬p' with-≡ eq' | no ¬p = no (¬p ∘ lem-∈-neq a x xs ¬p')
 
 ----------------------------------------
 --  List subset relation and queries  --
@@ -135,6 +198,8 @@ lem-⊂-ext x .(m ∷ ms) ys (cons {m} {ms} y y') = cons (lem-⊂-ext x ms ys y)
 
 {- BASE subset ⊂-refl ⊂-trans -}
 
+-- decidable subset checking
+
 subsetDec : {A : Set} (xs ys : List A) → (eq : Decidable {A = A} _≡_) → Dec (xs ⊂ ys)
 subsetDec [] ys eq = yes nil
 subsetDec (x ∷ xs) ys eq with subsetDec xs ys eq
@@ -142,6 +207,82 @@ subsetDec (x ∷ xs) ys eq | yes p with member x ys eq
 subsetDec (x ∷ xs) ys eq | yes p' | yes p = yes (cons p' p)
 subsetDec (x ∷ xs) ys eq | yes p  | no ¬p = no (λ x' → ¬p (lem-⊂-cons-inv-head x xs ys x'))
 subsetDec (x ∷ xs) ys eq | no ¬p = no (λ x' → ¬p (lem-⊂-cons-inv-tail x xs ys x'))
+
+---------------------------------------
+--  A notion of set-like uniqueness  --
+---------------------------------------
+
+-- a list is distinct iff all moves are unique
+
+data distinct {A : Set} : List A → Set where
+  dist-nil  : distinct []
+  dist-cons : {a : A}{l : List A} → (dist : distinct l) → a ∉ l → distinct (a ∷ l)
+
+
+
+-----------------------
+--  ∈, ⊂ and length  --
+-----------------------
+
+lem-positiveLen-nonEmpty : ∀ {A : Set} (l : List A) → 0 < length l → l ≢ []
+lem-positiveLen-nonEmpty [] () x'
+lem-positiveLen-nonEmpty (x ∷ xs) x' ()
+
+lem-nonEmpty-positiveLen : ∀ {A : Set} (l : List A)  → l ≢ [] → 0 < length l
+lem-nonEmpty-positiveLen [] x = ⊥-elim (x refl)
+lem-nonEmpty-positiveLen (x ∷ xs) x' = s≤s z≤n
+
+lem-positiveLen-exists : ∀ {A : Set} (l : List A) → 0 < length l → ∃ (λ (x : A) → x ∈ l)
+lem-positiveLen-exists [] ()
+lem-positiveLen-exists (h ∷ t) p = h , ∈-take
+
+lem-exists-positiveLen : ∀ {A : Set} (l : List A) → ∃ (λ (x : A) → x ∈ l) → 0 < length l
+lem-exists-positiveLen [] (h , ())
+lem-exists-positiveLen (x ∷ xs) p = s≤s z≤n
+
+lem-subset-not-in : ∀ {A : Set}(y : A)(xs ys : List A) → xs ⊂ (y ∷ ys) → y ∉ xs → xs ⊂ ys
+lem-subset-not-in y .[] ys nil nin = nil
+lem-subset-not-in y .(y ∷ ms) ys (cons {.y} {ms} y' ∈-take) nin = ⊥-elim (nin ∈-take)
+lem-subset-not-in y .(m ∷ ms) ys (cons {m} {ms} y' (∈-drop y0)) nin = cons (lem-subset-not-in y ms ys y' (λ x → nin (∈-drop x))) y0
+
+
+lem-subset-app : ∀ {A : Set}(xs ys zs : List A) (cmp : ∀ (a1 a2 : A) → Dec (a1 ≡ a2)) → xs ⊂ (ys ++ zs) → 
+  ∃₂ (λ (as bs : List A) → length xs ≡ length (as ++ bs) × as ⊂ ys × bs ⊂ zs)
+lem-subset-app .[] ys zs cmp nil = [] , [] , refl , nil , nil
+lem-subset-app .(m ∷ ms) ys zs cmp (cons {m} {ms} y y') with lem-subset-app ms ys zs cmp y
+lem-subset-app .(m ∷ ms) ys zs cmp (cons {m} {ms} y y') | as , bs , lens , asub , bsuc with lem-∈-app m ys zs cmp y'
+... | inj₁ m∈ys = m ∷ as , bs , cong suc lens , cons asub m∈ys , bsuc
+... | inj₂ m∈zs = as , m ∷ bs , trans (trans (cong suc (trans lens (lem-length-app as bs))) 
+          (lem-plus-s (foldr (λ x → suc) zero as) (foldr (λ x → suc) zero bs))) 
+          (sym (lem-length-app as (m ∷ bs))) , asub , cons bsuc m∈zs
+
+
+lem-≤-eq : ∀ {n n' m : ℕ} → n ≡ n' → n ≤ m → n' ≤ m
+lem-≤-eq refl p = p
+
+lem-≤-eq-refl : ∀ {n m} → n ≡ m → n ≤ m
+lem-≤-eq-refl refl = lem-≤-refl
+
+-- this is not true, this will be true if we suppose the has no repetitions
+lem-subset-length : ∀ {A : Set}(xs ys : List A)(cmp : ∀ (a1 a2 : A) → Dec (a1 ≡ a2)) → distinct xs → xs ⊂ ys → length xs ≤ length ys
+lem-subset-length .[] ys cmp dist nil = z≤n
+lem-subset-length .(m ∷ ms) ys cmp (dist-cons dist y) (cons {m} {ms} y' y0) with lem-exists-find m ys y0
+lem-subset-length .(m ∷ ms) ys cmp (dist-cons dist y) (cons {m} {ms} y' y0) | as , bs , p rewrite p with lem-subset-app ms as (m ∷ bs) cmp y'
+... | l1 , l2 , lens , sub1 , sub2 rewrite lens = ?
+  {-
+    lem-≤-trans (s≤s (lem-≤-eq (sym (lem-length-app l1 l2)) 
+   (lem-≤-cong2 (lem-subset-length l1 as cmp {!!} sub1) (lem-subset-length l2 (m ∷ bs) cmp {!!} sub2)))) 
+   (lem-≤-trans {!!} (lem-≤-eq-refl (sym (lem-length-app as (m ∷ bs)))))
+  -}
+
+  -- zabraklo usuniecia jednego suca, mam to na papierze
+
+{-with lem-subset-length ms (as ++ m ∷ bs) cmp dist y'
+... | rec = {!!} -}
+
+
+{- BASE length lem-positiveLen-exists lem-positiveLen-nonEmpty lem-nonEmpty-positiveLen 
+               lem-exists-positiveLen -}
 
 --------------------------------------------------------------------------------
 --  Existence of a elem in a list with a certain property relation and query  --
@@ -242,3 +383,98 @@ removeDec-valid-rev (x ∷ xs) decP a (∈-drop y) | no ¬p with removeDec-valid
 ... | a∈l , ¬Pa = ∈-drop a∈l , ¬Pa
 
 {- BASE remove removeDec-valid-rev removeDec-valid -}
+
+
+{-
+----------------------------------------
+      Properties of permutations
+----------------------------------------
+-}
+
+data Permutation {A : Set} : (l1 l2 : List A) → Set where
+  p-nil   : Permutation [] []
+  p-cons  : (x : A) (xs xs' : List A) → Permutation xs xs' → Permutation (x ∷ xs) (x ∷ xs')
+  p-swap  : (x y : A)(l : List A) → Permutation (x ∷ y ∷ l) (y ∷ x ∷ l)
+  p-trans : (l1 l2 l3 : List A) → Permutation l1 l2 → Permutation l2 l3 → Permutation l1 l3
+
+
+perm-id : ∀ {A : Set}(l : List A) → Permutation l l
+perm-id [] = p-nil
+perm-id (x ∷ xs) = p-cons x xs xs (perm-id xs)
+
+perm-sym : ∀ {A : Set}(l1 l2 : List A) → Permutation l1 l2 → Permutation l2 l1
+perm-sym .[] .[] p-nil = p-nil
+perm-sym .(x ∷ xs) .(x ∷ xs') (p-cons x xs xs' y) = p-cons x xs' xs (perm-sym xs xs' y)
+perm-sym .(x ∷ y ∷ l) .(y ∷ x ∷ l) (p-swap x y l) = p-swap y x l
+perm-sym l1 l2 (p-trans .l1 l3 .l2 y y') = p-trans l2 l3 l1 (perm-sym l3 l2 y') (perm-sym l1 l3 y)
+
+{- BASE perm perm-id perm-sym -}
+
+perm-in : ∀ {A : Set}(x : A)(l l' : List A) → (cmp : ∀ (a1 a2 : A) → Dec (a1 ≡ a2)) → 
+          Permutation l l' →  x ∈ l → x ∈ l'
+perm-in x .[] .[] cmp p-nil x∈l = x∈l
+perm-in .x' .(x' ∷ xs) .(x' ∷ xs') cmp (p-cons x' xs xs' y) (∈-take {.x'} {.xs}) = ∈-take
+perm-in x .(x' ∷ xs) .(x' ∷ xs') cmp (p-cons x' xs xs' y) (∈-drop y') = ∈-drop (perm-in x xs xs' cmp y y')
+perm-in .x' .(x' ∷ y ∷ l) .(y ∷ x' ∷ l) cmp (p-swap x' y l) (∈-take {.x'} {.(y ∷ l)}) = ∈-drop ∈-take
+perm-in .y .(x' ∷ y ∷ l) .(y ∷ x' ∷ l) cmp (p-swap x' y l) (∈-drop (∈-take {.y} {.l})) = ∈-take
+perm-in x .(x' ∷ y ∷ l) .(y ∷ x' ∷ l) cmp (p-swap x' y l) (∈-drop (∈-drop y')) = ∈-drop (∈-drop y')
+perm-in x l l' cmp (p-trans .l l2 .l' y y') x∈l = perm-in x l2 l' cmp y' (perm-in x l l2 cmp y x∈l)
+
+
+perm-in-rev : ∀ {A : Set}(x : A)(l l' : List A) → (cmp : ∀ (a1 a2 : A) → Dec (a1 ≡ a2)) → 
+               Permutation l l' →  x ∈ l' → x ∈ l
+perm-in-rev x .[] .[] x' p-nil x1 = x1
+perm-in-rev .x0 .(x0 ∷ xs) .(x0 ∷ xs') x' (p-cons x0 xs xs' y) (∈-take) = ∈-take
+perm-in-rev x .(x0 ∷ xs) .(x0 ∷ xs') x' (p-cons x0 xs xs' y) (∈-drop y') = ∈-drop (perm-in-rev x xs xs' x' y y')
+perm-in-rev .y .(x0 ∷ y ∷ l) .(y ∷ x0 ∷ l) x' (p-swap x0 y l) (∈-take) = ∈-drop ∈-take
+perm-in-rev .x0 .(x0 ∷ y ∷ l) .(y ∷ x0 ∷ l) x' (p-swap x0 y l) (∈-drop (∈-take)) = ∈-take
+perm-in-rev x .(x0 ∷ y ∷ l) .(y ∷ x0 ∷ l) x' (p-swap x0 y l) (∈-drop  (∈-drop y')) = ∈-drop (∈-drop y')
+perm-in-rev x l l' x' (p-trans .l l2 .l' y y') x1 = perm-in-rev x l l2 x' y (perm-in-rev x l2 l' x' y' x1)
+
+{- BASE in perm-in perm-in-rev -}
+{- BASE perm perm-in perm-in-rev -}
+
+
+perm-swap : ∀ {A : Set}(x y : A)(l1 l2 : List A) → Permutation l1 l2 → Permutation (x ∷ y ∷ l1) (y ∷ x ∷ l2)
+perm-swap x y .[] .[] p-nil = p-swap x y []
+perm-swap x y .(x' ∷ xs) .(x' ∷ xs') (p-cons x' xs xs' y') = p-trans (x ∷ y ∷ x' ∷ xs) (y ∷ x ∷ x' ∷ xs) (y ∷ x ∷ x' ∷ xs')
+                                                               (p-swap x y (x' ∷ xs))
+                                                               (p-cons y (x ∷ x' ∷ xs) (x ∷ x' ∷ xs')
+                                                                (p-cons x (x' ∷ xs) (x' ∷ xs') (p-cons x' xs xs' y')))
+perm-swap x y .(x' ∷ y' ∷ l) .(y' ∷ x' ∷ l) (p-swap x' y' l) = p-trans (x ∷ y ∷ x' ∷ y' ∷ l) (y ∷ x ∷ x' ∷ y' ∷ l)
+                                                                 (y ∷ x ∷ y' ∷ x' ∷ l) (p-swap x y (x' ∷ y' ∷ l))
+                                                                 (p-cons y (x ∷ x' ∷ y' ∷ l) (x ∷ y' ∷ x' ∷ l)
+                                                                  (p-cons x (x' ∷ y' ∷ l) (y' ∷ x' ∷ l) (p-swap x' y' l)))
+perm-swap x y l1 l2 (p-trans .l1 l3 .l2 y' y0) = p-trans (x ∷ y ∷ l1) (y ∷ x ∷ l3) (y ∷ x ∷ l2)
+                                                   (perm-swap x y l1 l3 y')
+                                                   (p-cons y (x ∷ l3) (x ∷ l2) (p-cons x l3 l2 y0)) 
+
+
+perm-nil : ∀ {A : Set}(l : List A) → Permutation [] l → l ≡ []
+perm-nil [] perm = refl
+perm-nil (x ∷ xs) (p-trans .[] l2 .(x ∷ xs) y y') rewrite (perm-nil l2 y) = perm-nil (x ∷ xs) y' 
+
+{- BASE perm perm-swap perm-nil -}
+
+postulate
+  perm-app : ∀ {A : Set}(xs xs' ys ys' : List A) → Permutation xs xs' → Permutation ys ys' → Permutation (xs ++ ys) (xs' ++ ys')
+
+{- BASE perm perm-app -}
+
+
+{- the following proof typechecks, but may not be terminating -}
+
+{-
+perm-app : ∀ {A : Set}(xs xs' ys ys' : List A) → Permutation xs xs' → Permutation ys ys' → Permutation (xs ++ ys) (xs' ++ ys')
+perm-app .[] .[] ys ys' p-nil perm-ys' = perm-ys'
+perm-app .(x ∷ xs) .(x ∷ xs') ys ys' (p-cons x xs xs' y) perm-ys' = p-cons x (xs ++ ys) (xs' ++ ys')
+                                                                      (perm-app xs xs' ys ys' y perm-ys')
+perm-app .(x ∷ y ∷ l) .(y ∷ x ∷ l) ys ys' (p-swap x y l) perm-ys' = perm-swap x y (l ++ ys) (l ++ ys') (perm-app l l ys ys' (perm-id l) perm-ys')
+perm-app xs xs' ys ys' (p-trans .xs l2 .xs' y y') perm-ys' = p-trans ((xs ++ ys)) ((l2 ++ ys')) ((xs' ++ ys')) p1 p2 where
+  p1 : Permutation (xs ++ ys) (l2 ++ ys')
+  p1 = perm-app xs l2 ys ys' y perm-ys'  
+
+  p2 : Permutation (l2 ++ ys') (xs' ++ ys')
+  p2 = perm-app l2 xs' ys' ys' y' (perm-id ys')
+-}
+

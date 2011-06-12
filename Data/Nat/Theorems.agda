@@ -3,6 +3,7 @@ module Data.Nat.Theorems where
 open import Data.Empty
 open import Data.Nat hiding (compare)
 open import Data.Nat.Compare
+open import Data.Product
 open import Data.Sum
 
 open import Relation.Binary
@@ -231,6 +232,11 @@ lem-≤-+r .(suc m) zero .(suc n) (s≤s {m} {n} m≤n) = s≤s (lem-≤-+r m ze
 lem-≤-+r .(suc m) (suc n) .(suc n') (s≤s {m} {n'} m≤n) = s≤s (lem-≤-+r m (suc n) n' m≤n)
 
 
+lem-≤-cong2 : ∀ {n m p q} → n ≤ p → m ≤ q → n + m ≤ p + q
+lem-≤-cong2 {.zero} {m} {p} {q} z≤n x' = lem-≤-l+ m p q x'
+lem-≤-cong2 (s≤s m≤n) x' = s≤s (lem-≤-cong2 m≤n x')
+
+
 lem-<-cong : ∀ {n m p q} → n < p → m < q → (n ⊔ m) < p + q
 lem-<-cong {n} {m} p1 p2 with lem-⊔ n m 
 lem-<-cong {n} {m} {p} {q} p1 p2 | inj₁ x rewrite x = lem-≤-+r (suc n) q p p1
@@ -282,3 +288,12 @@ lem-<-irrelv : ∀ {n k : ℕ} → {p1 : n < k} → {p2 : n < k} → p1 ≡ p2
 lem-<-irrelv = lem-≤-irrelv
 
 {- BASE irrelv lem-≤-irrelv lem-<-irrelv -}
+
+-------------------------
+--  Safe substraction  --
+-------------------------
+
+safeMinus : (m n : ℕ) → m ≤ n → ∃ (λ (k : ℕ) → n ≡ m + k)
+safeMinus .0 n z≤n = n , refl
+safeMinus .(suc m) .(suc n) (s≤s {m} {n} m≤n) with safeMinus m n m≤n
+safeMinus .(suc m) .(suc n) (s≤s {m} {n} m≤n) | k , n≡m+k = k , cong suc n≡m+k
