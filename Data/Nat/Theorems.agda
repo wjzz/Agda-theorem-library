@@ -1,8 +1,8 @@
 module Data.Nat.Theorems where
 
-open import Data.Empty
 open import Data.Nat hiding (compare)
-open import Data.Nat.Compare
+
+open import Data.Empty
 open import Data.Product
 open import Data.Sum
 
@@ -20,13 +20,11 @@ lem-zero-neq-suc ()
 lem-suc-eq : ∀ {n k : ℕ} → suc n ≡ suc k → n ≡ k
 lem-suc-eq refl = refl
 
-{- BASE arith lem-suc-eq -}
+{- BASE arith lem-zero-neq-suc lem-suc-eq -}
 
-{- 
-   ----------------------------------
-       Properties of addition (_+_) 
-   ----------------------------------
--}
+-------------------------------------
+--  Properties of addition (_+_)   --
+-------------------------------------
 
 lem-plus-0-n : (n : ℕ) → 0 + n ≡ n
 lem-plus-0-n n = refl
@@ -53,12 +51,9 @@ lem-plus-assoc (suc n) l n' = cong suc (lem-plus-assoc n l n')
 
 {- BASE arith lem-plus-n-0 lem-plus-1-n lem-plus-s lem-plus-comm lem-plus-assoc -}
 
-
-{- 
-  ----------------------------------------
-     Properties of multiplication (_*_)
-  ----------------------------------------
--}
+------------------------------------------
+--  Properties of multiplication (_*_)  --
+------------------------------------------
 
 lem-mult-0-n : (n : ℕ) → 0 * n ≡ 0
 lem-mult-0-n n = refl
@@ -82,11 +77,11 @@ lem-mult-assoc : (k n m : ℕ) → (k * n) * m ≡ k * (n * m)
 lem-mult-assoc zero n m = refl
 lem-mult-assoc (suc k) n m = trans (lem-mult-plus n (k * n) m) (cong (λ x → n * m + x) (lem-mult-assoc k n m))
 
-{-
-  ---------------------------------
-       Even and odd predicates
-  ---------------------------------
--}
+{- BASE arith lem-mult-n-0 lem-mult-n-1 lem-mult-assoc -}
+
+-------------------------------
+--  Even and odd predicates  --
+-------------------------------
 
 data Even : ℕ → Set where
   ev-0 : Even 0
@@ -94,6 +89,7 @@ data Even : ℕ → Set where
 
 data Odd : ℕ → Set where
   odd : ∀ {n} → Even n → Odd (suc n)
+
 
 lem-plus-of-evens : ∀ {n m} → Even n → Even m → Even (n + m)
 lem-plus-of-evens ev-0 p2 = p2
@@ -123,18 +119,18 @@ lem-square-of-evens p = lem-mult-of-evens-l p
 lem-square-of-odds : ∀ {n} → Odd n → Odd (n * n)
 lem-square-of-odds p = lem-mult-of-odds p p
 
-
 lem-odd-or-even : ∀ n → Even n ⊎ Odd n
 lem-odd-or-even zero = inj₁ ev-0
 lem-odd-or-even (suc n) with lem-odd-or-even n
 ...                            | inj₁ p = inj₂ (odd p)
 lem-odd-or-even (suc .(suc n)) | inj₂ (odd {n} y) = inj₁ (ev-s y)
 
-{-
-  ------------------------------
-           A parity view
-  ------------------------------
--}
+{- BASE parity lem-plus-of-evens lem-plus-of-odds lem-twice-is-even 
+        lem-mult-of-odds lem-mult-of-evens-l lem-square-of-odds lem-odd-or-even -}
+
+---------------------
+--  A parity view  --
+---------------------
 
 data Parity : ℕ → Set where
   odd  : (k : ℕ) → Parity (1 + k * 2)
@@ -146,12 +142,23 @@ getParity (suc n) with getParity n
 getParity (suc .(suc (k * 2))) |  odd k = even (suc k)
 getParity (suc .(k * 2))       | even k = odd k
 
+----------------------------------
+--  Properties of (my) compare  --
+----------------------------------
 
-{-
-  ------------------------------
-    Properties of (my) compare
-  ------------------------------
+{- 
+   My own comparing function and result datatype. 
+   The compare function from Data.Nat produces a lot of noise.
 -}
+  
+data Ord : Set where
+ LT EQ GT : Ord
+
+compare : ℕ → ℕ → Ord
+compare zero zero    = EQ
+compare zero (suc n) = LT
+compare (suc n) zero = GT
+compare (suc n) (suc n') = compare n n'
 
 EQ≠LT : EQ ≢ LT
 EQ≠LT ()
@@ -194,12 +201,15 @@ lem-compare-eq {zero} {suc n} ()
 lem-compare-eq {suc n} {zero} ()
 lem-compare-eq {suc n} {suc n'} p = cong suc (lem-compare-eq p)
 
+{- BASE compare EQ≠GT EQ≠LT GT≠EQ GT≠LT LT≠GT LT≠EQ lem-compare-refl lem-compare-swap lem-compare-trans-lt lem-compare-eq -}
 
-{-
-  -----------------------------------
-       Properties of ⊔ and <
-  -----------------------------------
--}
+-----------------------------
+--  Properties of ⊔ and <  --
+-----------------------------
+
+lem-≤-suc : ∀ (n : ℕ) → n ≤ suc n
+lem-≤-suc zero = z≤n
+lem-≤-suc (suc n) = s≤s (lem-≤-suc n)
 
 lem-≤-refl : Reflexive _≤_
 lem-≤-refl = Poset.refl (DecTotalOrder.poset decTotalOrder)
@@ -207,13 +217,11 @@ lem-≤-refl = Poset.refl (DecTotalOrder.poset decTotalOrder)
 lem-≤-trans : Transitive _≤_
 lem-≤-trans = Poset.trans (DecTotalOrder.poset decTotalOrder)
 
-lem-≤-suc : ∀ (n : ℕ) → n ≤ suc n
-lem-≤-suc zero = z≤n
-lem-≤-suc (suc n) = s≤s (lem-≤-suc n)
-
 lem-<-trans : Transitive _<_
 lem-<-trans {j = suc n} (s≤s m≤n) (s≤s n≤k) = s≤s (lem-≤-trans (lem-≤-trans m≤n (lem-≤-suc n)) n≤k)
 lem-<-trans {j = zero} () p2
+
+{- BASE arith lem-≤-refl lem-≤-trans lem-≤-suc lem-<-trans -}
 
 lem-⊔ : ∀ (n m : ℕ) → n ⊔ m ≡ n ⊎ n ⊔ m ≡ m
 lem-⊔ zero m = inj₂ refl
@@ -234,24 +242,20 @@ lem-≤-+r .0 n q z≤n = z≤n
 lem-≤-+r .(suc m) zero .(suc n) (s≤s {m} {n} m≤n) = s≤s (lem-≤-+r m zero n m≤n)
 lem-≤-+r .(suc m) (suc n) .(suc n') (s≤s {m} {n'} m≤n) = s≤s (lem-≤-+r m (suc n) n' m≤n)
 
-
 lem-≤-cong2 : ∀ {n m p q} → n ≤ p → m ≤ q → n + m ≤ p + q
 lem-≤-cong2 {.zero} {m} {p} {q} z≤n x' = lem-≤-l+ m p q x'
 lem-≤-cong2 (s≤s m≤n) x' = s≤s (lem-≤-cong2 m≤n x')
-
 
 lem-<-cong : ∀ {n m p q} → n < p → m < q → (n ⊔ m) < p + q
 lem-<-cong {n} {m} p1 p2 with lem-⊔ n m 
 lem-<-cong {n} {m} {p} {q} p1 p2 | inj₁ x rewrite x = lem-≤-+r (suc n) q p p1
 lem-<-cong {n} {m} {p} {q} p1 p2 | inj₂ y rewrite y = lem-≤-l+ (suc m) p q p2
 
-{- BASE arith lem-≤-refl lem-≤-trans lem-≤-suc lem-<-trans -}
+{- BASE arith lem-⊔ lem-≤-l+ lem-≤-+r lem-≤-cong2 lem-<-cong -}
 
-{-
-  -----------------------------------
-     Converting between < and ≤
-  -----------------------------------
--}
+------------------------------------------
+--  Converting between < and ≤ (and ≡)  --
+------------------------------------------
 
 lem-≤-cases : ∀ (n m : ℕ) → n ≤ m → n < m ⊎ n ≡ m
 lem-≤-cases .0 zero z≤n = inj₂ refl
@@ -272,11 +276,17 @@ lem-suc-n-n-impossible (s≤s m≤n) = lem-suc-n-n-impossible m≤n
 lem-both-≤-<-impossible : ∀ {n m : ℕ} → n ≤ m → m < n -> ⊥
 lem-both-≤-<-impossible {n} {m} x x' = lem-suc-n-n-impossible (lem-≤-trans x' x)
 
-{- 
-  ------------------------------------
-            Properties of _≟_
-  ------------------------------------
--}
+lem-≤-eq : ∀ {n n' m : ℕ} → n ≡ n' → n ≤ m → n' ≤ m
+lem-≤-eq refl p = p
+
+lem-≤-eq-refl : ∀ {n m} → n ≡ m → n ≤ m
+lem-≤-eq-refl refl = lem-≤-refl
+
+{- BASE arith lem-≤-cases lem-≤-cases-ext lem-suc-n-n-impossible lem-≤-eq lem-≤-eq-refl -}
+
+-------------------------
+--  Properties of _≟_  --
+-------------------------
 
 lem-≟-refl : ∀ (n : ℕ) → (n ≟ n) ≡ yes refl
 lem-≟-refl zero = refl
@@ -284,6 +294,8 @@ lem-≟-refl (suc n) rewrite lem-≟-refl n = refl
 
 lem-less-means-no : ∀ (n m : ℕ) → (n < m) → (p : n ≡ m) → ⊥
 lem-less-means-no .(suc n) .(suc n) (s≤s {.(suc n)} {n} m≤n) refl = lem-less-means-no n n m≤n refl
+
+{- BASE arith lem-less-means-no -}
 
 ---------------------------------------
 --  Proof irrelevance for orderings  --
@@ -318,6 +330,9 @@ lem-minus-positive .(suc m) .(suc (suc n)) (s≤s (s≤s {m} {n} m≤n)) = lem-m
 lem-minus-eq : ∀ (n k : ℕ) → k ≤ n → suc (n ∸ k) ≡ (suc n ∸ k)
 lem-minus-eq n .0 z≤n = refl
 lem-minus-eq .(suc n) .(suc m) (s≤s {m} {n} m≤n) = lem-minus-eq n m m≤n
+
+{- BASE arith lem-minus-positive lem-minus-eq -}
+{- BASE minus lem-minus-positive lem-minus-eq -}
 
 -------------------------------------
 --  ≤ and ≤' (copied from stdlib)  --

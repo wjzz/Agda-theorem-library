@@ -16,8 +16,8 @@ open import Relation.Binary.PropositionalEquality
 
 open ≡-Reasoning
 
-{- BASE global ⊥-elim -}
 {- BASE IMPORT Data.Nat.Theorems -}
+{- BASE global ⊥-elim -}
 
 -------------------------------------------------
 --  Properties of the standard list functions  --
@@ -177,6 +177,16 @@ member a (x ∷ xs) eq | no ¬p with-≡ eq' with member a xs eq
 member a (x ∷ xs) eq | no ¬p with-≡ eq'  | yes p = yes (∈-drop p)
 member a (x ∷ xs) eq | no ¬p' with-≡ eq' | no ¬p = no (¬p ∘ lem-∈-neq a x xs ¬p')
 
+---------------------------------------
+--  A notion of set-like uniqueness  --
+---------------------------------------
+
+-- a list is distinct iff all moves are unique
+
+data distinct {A : Set} : List A → Set where
+  dist-nil  : distinct []
+  dist-cons : {a : A}{l : List A} → (dist : distinct l) → a ∉ l → distinct (a ∷ l)
+
 ----------------------------------------
 --  List subset relation and queries  --
 ----------------------------------------
@@ -226,18 +236,6 @@ subsetDec (x ∷ xs) ys eq | yes p' | yes p = yes (cons p' p)
 subsetDec (x ∷ xs) ys eq | yes p  | no ¬p = no (λ x' → ¬p (lem-⊂-cons-inv-head x xs ys x'))
 subsetDec (x ∷ xs) ys eq | no ¬p = no (λ x' → ¬p (lem-⊂-cons-inv-tail x xs ys x'))
 
----------------------------------------
---  A notion of set-like uniqueness  --
----------------------------------------
-
--- a list is distinct iff all moves are unique
-
-data distinct {A : Set} : List A → Set where
-  dist-nil  : distinct []
-  dist-cons : {a : A}{l : List A} → (dist : distinct l) → a ∉ l → distinct (a ∷ l)
-
-
-
 -----------------------
 --  ∈, ⊂ and length  --
 -----------------------
@@ -274,12 +272,6 @@ lem-subset-app .(m ∷ ms) ys zs cmp (cons {m} {ms} y y') | as , bs , lens , asu
           (lem-plus-s (foldr (λ x → suc) zero as) (foldr (λ x → suc) zero bs))) 
           (sym (lem-length-app as (m ∷ bs))) , asub , cons bsuc m∈zs
 
-
-lem-≤-eq : ∀ {n n' m : ℕ} → n ≡ n' → n ≤ m → n' ≤ m
-lem-≤-eq refl p = p
-
-lem-≤-eq-refl : ∀ {n m} → n ≡ m → n ≤ m
-lem-≤-eq-refl refl = lem-≤-refl
 
 -- this is not true, this will be true if we suppose the has no repetitions
 postulate 
@@ -327,7 +319,6 @@ lem-any-exists-inv P .(x ∷ xs)  (a0 , ∈-drop {.a0} {x} {xs} y , Pa0) = any-o
 
 lem-none-exists : {A : Set} (P : A → Set) (l : List A) → ¬ Any P l → ¬ ∃ (λ (a : A) → a ∈ l × P a)
 lem-none-exists P l x x' = x (lem-any-exists-inv P l x')
-
 
 lem-any-nhead-ncons-nlist : {A : Set} (P : A → Set) (a : A)(xs : List A) → (¬ P a) → (¬ Any P xs) → ¬ Any P (a ∷ xs)
 lem-any-nhead-ncons-nlist P a xs ¬Pa ¬Pxs (any-this y)  = ¬Pa y
@@ -560,3 +551,38 @@ perm-app xs xs' ys ys' (p-trans .xs l2 .xs' y y') perm-ys' = p-trans ((xs ++ ys)
   p2 = perm-app l2 xs' ys' ys' y' (perm-id ys')
 -}
 
+-----------------------------------------------------------------------------------------------
+--  A version of map for situation whens a proof of membership is required for calculations  --
+-----------------------------------------------------------------------------------------------
+
+map-in : {A B : Set} → (l : List A) → (f : (a : A) → a ∈ l → B) → List B
+map-in [] _ = []
+map-in {A} {B} (x ∷ xs) f = f x ∈-take ∷ map-in xs f' where
+  f' : (a : A) → a ∈ xs → B
+  f' a a∈xs = f a (∈-drop a∈xs)
+
+lem-length-map-in :  {A B : Set} → (l : List A) → (f : (a : A) → a ∈ l → B) → length (map-in l f) ≡ length l
+lem-length-map-in []       f = refl
+lem-length-map-in (x ∷ xs) f = cong suc (lem-length-map-in xs (λ a x' → f a (∈-drop x')))
+
+lem-map-in-inv : {A B : Set} → {a0 : B} → (l : List A) → (f : (a : A) → a ∈ l → B) → a0 ∈ map-in l f →
+  ∃₂ (λ (a : A) (p : a ∈ l) → a0 ≡ f a p)
+lem-map-in-inv [] f () 
+lem-map-in-inv (x ∷ xs) f ∈-take = x , ∈-take , refl
+lem-map-in-inv {A} {B} {a0} (x ∷ xs) f (∈-drop y) with lem-map-in-inv xs f' y where
+  f' : (a : A) (a∈xs : a ∈ xs) → B
+  f' a a∈xs = f a (∈-drop a∈xs)
+lem-map-in-inv {A} {B} {a0} (x ∷ xs) f (∈-drop y) | a , a∈xs , a0≡a = a , ∈-drop a∈xs , a0≡a
+
+-------------------------
+--  Proof irrelevance  --
+-------------------------
+
+-- x ∈ xs proof irrelevance 
+
+lem-∈-irrelv : ∀ {A : Set}{a : A}{l} → distinct l → (p1 : a ∈ l) → (p2 : a ∈ l) → p1 ≡ p2
+lem-∈-irrelv dist-nil () a∈[]
+lem-∈-irrelv (dist-cons dist y) ∈-take ∈-take = refl
+lem-∈-irrelv (dist-cons dist y) ∈-take (∈-drop y') = ⊥-elim (y y')
+lem-∈-irrelv (dist-cons dist y) (∈-drop y') ∈-take = ⊥-elim (y y')
+lem-∈-irrelv (dist-cons dist y) (∈-drop y') (∈-drop y0) = cong ∈-drop (lem-∈-irrelv dist y' y0)
