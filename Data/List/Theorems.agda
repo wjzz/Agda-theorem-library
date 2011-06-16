@@ -17,6 +17,7 @@ open import Relation.Binary.PropositionalEquality
 open ≡-Reasoning
 
 {- BASE global ⊥-elim -}
+{- BASE IMPORT Data.Nat.Theorems -}
 
 -------------------------------------------------
 --  Properties of the standard list functions  --
@@ -189,7 +190,10 @@ lem-⊂-ext : ∀ {A : Set}(x : A)(xs ys : List A) → xs ⊂ ys → xs ⊂ x �
 lem-⊂-ext x .[] ys nil = nil
 lem-⊂-ext x .(m ∷ ms) ys (cons {m} {ms} y y') = cons (lem-⊂-ext x ms ys y) (∈-drop y')
 
-{- BASE subset lem-⊂-cons-inv-head lem-⊂-cons-inv-tail lem-subset-alt lem-⊂-ext -}
+lem-⊂-cong : ∀ {A : Set}{x : A}{xs ys : List A} → xs ⊂ ys → x ∷ xs ⊂ x ∷ ys
+lem-⊂-cong {A} {x} {xs} {ys} sub = cons (lem-⊂-ext x xs ys sub) ∈-take
+
+{- BASE subset lem-⊂-cons-inv-head lem-⊂-cons-inv-tail lem-subset-alt lem-⊂-ext lem-⊂-cong -}
 
 ⊂-refl : ∀ {A : Set}(xs : List A) → xs ⊂ xs
 ⊂-refl [] = nil
@@ -359,6 +363,12 @@ filterDec-valid-rev (x ∷ xs) decP a (∈-drop y) | yes p with filterDec-valid-
 filterDec-valid-rev (x ∷ xs) decP a a∈filter | no ¬p with filterDec-valid-rev xs decP a a∈filter
 filterDec-valid-rev (x ∷ xs) decP a a∈filter | no ¬p | a∈l , Pa = ∈-drop a∈l , Pa
 
+filterDec-length : {A : Set} {P : A → Set} (l : List A) (decP : ((a : A) → Dec (P a))) → length (filterDec l decP) ≤ length l
+filterDec-length [] decP = z≤n
+filterDec-length (x ∷ xs) decP with decP x
+filterDec-length (x ∷ xs) decP | yes p = s≤s (filterDec-length xs decP)
+filterDec-length (x ∷ xs) decP | no ¬p = lem-≤-trans (filterDec-length xs decP) (lem-≤-suc (foldr (λ x' → suc) zero xs))
+
 {- BASE filter filterDec-valid-rev filterDec-valid -}
 
 --------------------------------
@@ -426,7 +436,25 @@ removeDec-distinct (x ∷ xs) decP (dist-cons dist y) | yes p = removeDec-distin
 removeDec-distinct {A} {P} (x ∷ xs) decP (dist-cons dist y) | no ¬p = dist-cons (removeDec-distinct xs decP dist) 
                                                                                 (removeDec-nin xs decP x y)
 
+removeDec-pred-subset : {A : Set} {P1 P2 : A → Set} (l : List A)(decP1 : ((a : A) → Dec (P1 a)))(decP2 : ((a : A) → Dec (P2 a)))
+                       → ((a : A) → P2 a → P1 a) → removeDec l decP1 ⊂ removeDec l decP2
+removeDec-pred-subset [] decP1 decP2 impl = nil
+removeDec-pred-subset (x ∷ xs) decP1 decP2 impl with decP2 x 
+removeDec-pred-subset (x ∷ xs) decP1 decP2 impl | yes p with decP1 x | impl x p
+removeDec-pred-subset (x ∷ xs) decP1 decP2 impl | yes p | yes p' | p2 = removeDec-pred-subset xs decP1 decP2 impl
+removeDec-pred-subset (x ∷ xs) decP1 decP2 impl | yes p | no ¬p | p2 = ⊥-elim (¬p p2)
+removeDec-pred-subset (x ∷ xs) decP1 decP2 impl | no ¬p with decP1 x
+removeDec-pred-subset (x ∷ xs) decP1 decP2 impl | no ¬p | yes p 
+   = lem-⊂-ext x (removeDec xs decP1) ((removeDec xs decP2)) (removeDec-pred-subset xs decP1 decP2 impl)
+removeDec-pred-subset (x ∷ xs) decP1 decP2 impl | no ¬p' | no ¬p = lem-⊂-cong (removeDec-pred-subset xs decP1 decP2 impl)
+
 {- BASE remove removeDec-valid-rev removeDec-valid removeDec-valid2 removeDec-subset -}
+
+removeDec-length : {A : Set} {P : A → Set} (l : List A) (decP : ((a : A) → Dec (P a))) → length (removeDec l decP) ≡ length l ∸ length (filterDec l decP)
+removeDec-length [] decP = refl
+removeDec-length (x ∷ xs) decP with decP x
+removeDec-length (x ∷ xs) decP | yes p = removeDec-length xs decP
+removeDec-length (x ∷ xs) decP | no ¬p rewrite removeDec-length xs decP = lem-minus-eq (length xs) (length (filterDec xs decP)) (filterDec-length xs decP)
 
 {-
 ----------------------------------------

@@ -323,7 +323,6 @@ lem-minus-eq .(suc n) .(suc m) (s≤s {m} {n} m≤n) = lem-minus-eq n m m≤n
 --  ≤ and ≤' (copied from stdlib)  --
 -------------------------------------
 
-------------------------------------------------------------------------
 -- Converting between ≤ and ≤′
 
 ≤-step : ∀ {m n} → m ≤ n → m ≤ 1 + n
