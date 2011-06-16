@@ -23,6 +23,11 @@ open ≡-Reasoning
 --  Properties of the standard list functions  --
 -------------------------------------------------
 
+-- lemma for pattern matching/rewrite failure
+
+lem-length-eq :  ∀ {A : Set} → {l1 l2 : List A} → l1 ≡ l2 → length l1 ≡ length l2
+lem-length-eq refl = refl
+
 {- length properties -}
 
 lem-length-app : ∀ {A : Set} → (l1 l2 : List A) → length (l1 ++ l2) ≡ length l1 + length l2
@@ -98,6 +103,12 @@ a ∉ l = ¬ (a ∈ l)
 
 
 -- lemmas for situations where pattern matching doesn't work
+
+lem-∉-empty : ∀ {A : Set} → (a : A) → a ∉ []
+lem-∉-empty a ()
+
+lem-∈-eq-l : ∀ {A : Set} (a : A)(xs ys : List A) → xs ≡ ys → a ∈ xs → a ∈ ys
+lem-∈-eq-l a xs .xs refl inn = inn 
 
 lem-∈-eq : ∀ {A : Set} (a a' : A)(xs : List A) → a ≡ a' → a ∈ a' ∷ xs
 lem-∈-eq .a' a' xs refl = ∈-take
