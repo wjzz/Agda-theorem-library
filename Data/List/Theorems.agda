@@ -28,6 +28,9 @@ lem-length-app : ∀ {A : Set} → (l1 l2 : List A) → length (l1 ++ l2) ≡ le
 lem-length-app [] l2 = refl
 lem-length-app (x ∷ xs) l2 = cong suc (lem-length-app xs l2)
 
+lem-length-map : ∀ {A B : Set} (f : A → B) (l : List A) → length l ≡ length (Data.List.map f l)
+lem-length-map f [] = refl
+lem-length-map f (x ∷ xs) = cong suc (lem-length-map f xs)
 
 {- ++ properties -}
 
@@ -192,9 +195,9 @@ lem-⊂-ext x .(m ∷ ms) ys (cons {m} {ms} y y') = cons (lem-⊂-ext x ms ys y)
 ⊂-refl [] = nil
 ⊂-refl (x ∷ xs) = cons (lem-⊂-ext x xs xs (⊂-refl xs)) ∈-take
 
-⊂-trans : ∀ {A : Set}(xs ys zs : List A) → xs ⊂ ys → ys ⊂ zs → xs ⊂ zs
-⊂-trans .[] ys zs nil yz = nil
-⊂-trans .(m ∷ ms) ys zs (cons {m} {ms} y y') yz = cons (⊂-trans ms ys zs y yz) (lem-subset-alt m ys zs yz y')
+⊂-trans : ∀ {A : Set}{xs ys zs : List A} → xs ⊂ ys → ys ⊂ zs → xs ⊂ zs
+⊂-trans {A} {.[]} {ys} {zs} nil yz = nil
+⊂-trans {A} {.(m ∷ ms)} {ys} {zs} (cons {m} {ms} y y') yz = cons (⊂-trans y yz) (lem-subset-alt m ys zs yz y')
 
 {- BASE subset ⊂-refl ⊂-trans -}
 
@@ -264,12 +267,17 @@ lem-≤-eq-refl : ∀ {n m} → n ≡ m → n ≤ m
 lem-≤-eq-refl refl = lem-≤-refl
 
 -- this is not true, this will be true if we suppose the has no repetitions
+postulate 
+  lem-subset-length : ∀ {A : Set}(xs ys : List A)(cmp : ∀ (a1 a2 : A) → Dec (a1 ≡ a2)) → distinct xs → xs ⊂ ys → length xs ≤ length ys
+
+{-
 lem-subset-length : ∀ {A : Set}(xs ys : List A)(cmp : ∀ (a1 a2 : A) → Dec (a1 ≡ a2)) → distinct xs → xs ⊂ ys → length xs ≤ length ys
 lem-subset-length .[] ys cmp dist nil = z≤n
 lem-subset-length .(m ∷ ms) ys cmp (dist-cons dist y) (cons {m} {ms} y' y0) with lem-exists-find m ys y0
 lem-subset-length .(m ∷ ms) ys cmp (dist-cons dist y) (cons {m} {ms} y' y0) | as , bs , p rewrite p with lem-subset-app ms as (m ∷ bs) cmp y'
-... | l1 , l2 , lens , sub1 , sub2 rewrite lens = ?
-  {-
+... | l1 , l2 , lens , sub1 , sub2 rewrite lens = {!!}
+-}  
+{-
     lem-≤-trans (s≤s (lem-≤-eq (sym (lem-length-app l1 l2)) 
    (lem-≤-cong2 (lem-subset-length l1 as cmp {!!} sub1) (lem-subset-length l2 (m ∷ bs) cmp {!!} sub2)))) 
    (lem-≤-trans {!!} (lem-≤-eq-refl (sym (lem-length-app as (m ∷ bs)))))
@@ -382,8 +390,36 @@ removeDec-valid-rev (x ∷ xs) decP .x ∈-take  | no ¬p = ∈-take , ¬p
 removeDec-valid-rev (x ∷ xs) decP a (∈-drop y) | no ¬p with removeDec-valid-rev xs decP a y
 ... | a∈l , ¬Pa = ∈-drop a∈l , ¬Pa
 
-{- BASE remove removeDec-valid-rev removeDec-valid -}
+removeDec-valid2 : {A : Set} {P : A → Set} (l : List A) (_==_ : Decidable{A = A} _≡_)(decP : ((a : A) → Dec (P a))) → (a : A) → 
+                                      a ∈ l → a ∉ removeDec l decP → P a
+removeDec-valid2 .(a ∷ xs) eq decP a (∈-take {.a} {xs}) a∉remove with decP a
+... | yes p = p
+... | no ¬p = ⊥-elim (a∉remove ∈-take)
+removeDec-valid2 .(x ∷ xs) eq decP a (∈-drop {.a} {x} {xs} y) a∉remove with decP x
+... | yes p = removeDec-valid2 xs eq decP a y a∉remove
+removeDec-valid2 .(x ∷ xs) eq decP a (∈-drop {.a} {x} {xs} y) a∉remove | no ¬p with eq a x
+... | yes p' rewrite p' = ⊥-elim (a∉remove ∈-take)
+... | no ¬p' = removeDec-valid2 xs eq decP a y (λ x' → a∉remove (∈-drop x'))
 
+removeDec-nin : {A : Set} {P : A → Set} (l : List A)(decP : ((a : A) → Dec (P a))) → (a : A) → a ∉ l 
+    → a ∉ removeDec l decP
+removeDec-nin l decP a a∉l a∈remove = a∉l (proj₁ (removeDec-valid-rev l decP a a∈remove))
+
+removeDec-subset : {A : Set} {P : A → Set} (l : List A)(decP : ((a : A) → Dec (P a))) → removeDec l decP ⊂ l
+removeDec-subset [] decP = nil
+removeDec-subset (x ∷ xs) decP with decP x
+removeDec-subset (x ∷ xs) decP | yes p = lem-⊂-ext x (removeDec xs decP) xs (removeDec-subset xs decP)
+removeDec-subset (x ∷ xs) decP | no ¬p = cons (lem-⊂-ext x ((removeDec xs decP)) xs (removeDec-subset xs decP)) ∈-take
+
+removeDec-distinct : {A : Set} {P : A → Set} (l : List A)(decP : ((a : A) → Dec (P a))) 
+                     → distinct l → distinct (removeDec l decP)
+removeDec-distinct [] decP dist = dist
+removeDec-distinct (x ∷ xs) decP dist with decP x
+removeDec-distinct (x ∷ xs) decP (dist-cons dist y) | yes p = removeDec-distinct xs decP dist
+removeDec-distinct {A} {P} (x ∷ xs) decP (dist-cons dist y) | no ¬p = dist-cons (removeDec-distinct xs decP dist) 
+                                                                                (removeDec-nin xs decP x y)
+
+{- BASE remove removeDec-valid-rev removeDec-valid removeDec-valid2 removeDec-subset -}
 
 {-
 ----------------------------------------

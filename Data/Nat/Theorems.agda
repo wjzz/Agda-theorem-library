@@ -14,6 +14,9 @@ open import Relation.Nullary
 --  Properties of equlity on nats  --
 -------------------------------------
 
+lem-zero-neq-suc : ∀ {n} → 0 ≢ suc n
+lem-zero-neq-suc ()
+
 lem-suc-eq : ∀ {n k : ℕ} → suc n ≡ suc k → n ≡ k
 lem-suc-eq refl = refl
 
@@ -263,6 +266,12 @@ lem-≤-cases-ext n m n≤m n≡m with lem-≤-cases n m n≤m
 lem-≤-cases-ext n m n≤m n≡m | inj₁ n<m = n<m
 lem-≤-cases-ext n m n≤m n≡m | inj₂ n=m = ⊥-elim (n≡m n=m)
 
+lem-suc-n-n-impossible : ∀ {n : ℕ} → ¬ (suc n ≤ n)
+lem-suc-n-n-impossible (s≤s m≤n) = lem-suc-n-n-impossible m≤n
+
+lem-both-≤-<-impossible : ∀ {n m : ℕ} → n ≤ m → m < n -> ⊥
+lem-both-≤-<-impossible {n} {m} x x' = lem-suc-n-n-impossible (lem-≤-trans x' x)
+
 {- 
   ------------------------------------
             Properties of _≟_
@@ -297,3 +306,46 @@ safeMinus : (m n : ℕ) → m ≤ n → ∃ (λ (k : ℕ) → n ≡ m + k)
 safeMinus .0 n z≤n = n , refl
 safeMinus .(suc m) .(suc n) (s≤s {m} {n} m≤n) with safeMinus m n m≤n
 safeMinus .(suc m) .(suc n) (s≤s {m} {n} m≤n) | k , n≡m+k = k , cong suc n≡m+k
+
+-----------------------------------------
+--  Properties of unsafe substraction  --
+-----------------------------------------
+
+lem-minus-positive : ∀ (n k : ℕ) → n < k → 1 ≤ k ∸ n
+lem-minus-positive .0 .(suc n) (s≤s {.0} {n} z≤n) = s≤s z≤n
+lem-minus-positive .(suc m) .(suc (suc n)) (s≤s (s≤s {m} {n} m≤n)) = lem-minus-positive m (suc n) (s≤s m≤n) 
+
+lem-minus-eq : ∀ (n k : ℕ) → k ≤ n → suc (n ∸ k) ≡ (suc n ∸ k)
+lem-minus-eq n .0 z≤n = refl
+lem-minus-eq .(suc n) .(suc m) (s≤s {m} {n} m≤n) = lem-minus-eq n m m≤n
+
+-------------------------------------
+--  ≤ and ≤' (copied from stdlib)  --
+-------------------------------------
+
+------------------------------------------------------------------------
+-- Converting between ≤ and ≤′
+
+≤-step : ∀ {m n} → m ≤ n → m ≤ 1 + n
+≤-step z≤n       = z≤n
+≤-step (s≤s m≤n) = s≤s (≤-step m≤n)
+
+≤′⇒≤ : _≤′_ ⇒ _≤_
+≤′⇒≤ ≤′-refl        = lem-≤-refl
+≤′⇒≤ (≤′-step m≤′n) = ≤-step (≤′⇒≤ m≤′n)
+
+z≤′n : ∀ {n} → zero ≤′ n
+z≤′n {zero}  = ≤′-refl
+z≤′n {suc n} = ≤′-step z≤′n
+
+s≤′s : ∀ {m n} → m ≤′ n → suc m ≤′ suc n
+s≤′s ≤′-refl        = ≤′-refl
+s≤′s (≤′-step m≤′n) = ≤′-step (s≤′s m≤′n)
+
+≤⇒≤′ : _≤_ ⇒ _≤′_
+≤⇒≤′ z≤n       = z≤′n
+≤⇒≤′ (s≤s m≤n) = s≤′s (≤⇒≤′ m≤n)
+
+<⇒<′ : _<_ ⇒ _<′_
+<⇒<′ = ≤⇒≤′
+
