@@ -390,6 +390,9 @@ removeDec-valid-rev (x ∷ xs) decP .x ∈-take  | no ¬p = ∈-take , ¬p
 removeDec-valid-rev (x ∷ xs) decP a (∈-drop y) | no ¬p with removeDec-valid-rev xs decP a y
 ... | a∈l , ¬Pa = ∈-drop a∈l , ¬Pa
 
+-- QUESTION:
+-- can't this be done ony by using removeDec-valid? (just like removeDec-valid2-rev only use removeDec-valid-rev)
+
 removeDec-valid2 : {A : Set} {P : A → Set} (l : List A) (_==_ : Decidable{A = A} _≡_)(decP : ((a : A) → Dec (P a))) → (a : A) → 
                                       a ∈ l → a ∉ removeDec l decP → P a
 removeDec-valid2 .(a ∷ xs) eq decP a (∈-take {.a} {xs}) a∉remove with decP a
@@ -400,6 +403,10 @@ removeDec-valid2 .(x ∷ xs) eq decP a (∈-drop {.a} {x} {xs} y) a∉remove wit
 removeDec-valid2 .(x ∷ xs) eq decP a (∈-drop {.a} {x} {xs} y) a∉remove | no ¬p with eq a x
 ... | yes p' rewrite p' = ⊥-elim (a∉remove ∈-take)
 ... | no ¬p' = removeDec-valid2 xs eq decP a y (λ x' → a∉remove (∈-drop x'))
+
+removeDec-valid2-rev : {A : Set} {P : A → Set} (l : List A)(decP : ((a : A) → Dec (P a))) 
+                       → (a : A) → a ∈ l → P a → a ∉ removeDec l decP
+removeDec-valid2-rev l decP a a∈l Pa a∈remove = (proj₂ (removeDec-valid-rev l decP a a∈remove)) Pa
 
 removeDec-nin : {A : Set} {P : A → Set} (l : List A)(decP : ((a : A) → Dec (P a))) → (a : A) → a ∉ l 
     → a ∉ removeDec l decP
