@@ -16,7 +16,6 @@ open import Relation.Binary.PropositionalEquality
 
 open ≡-Reasoning
 
-{- BASE IMPORT Data.Nat.Theorems -}
 {- BASE global ⊥-elim -}
 
 -------------------------------------------------
