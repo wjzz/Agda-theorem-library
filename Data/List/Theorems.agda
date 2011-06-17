@@ -103,6 +103,10 @@ a ∉ l = ¬ (a ∈ l)
 
 -- lemmas for situations where pattern matching doesn't work
 
+lem-∈-len-nonzero : ∀ {A : Set} {a : A} {l : List A} → a ∈ l → 0 ≢ length l
+lem-∈-len-nonzero {A} {a} {[]} () 0≡l
+lem-∈-len-nonzero {A} {a} {x ∷ xs} a∈l ()
+
 lem-∉-empty : ∀ {A : Set} → (a : A) → a ∉ []
 lem-∉-empty a ()
 
@@ -119,7 +123,7 @@ lem-∉-neq-tail a a' xs neq a∉xs (∈-drop y) = a∉xs y
 lem-∉-cons : ∀ {A : Set} (a a' : A)(xs : List A) → a ∉ (a' ∷ xs) → a ≢ a'
 lem-∉-cons a a' xs x eq rewrite eq = x (∈-take)
 
-{- BASE in lem-∈-eq lem-∉-neq-tail lem-∉-cons -}
+{- BASE in lem-∈-len-nonzero lem-∈-eq lem-∉-neq-tail lem-∉-cons -}
 
 
 -- extension lemmas
