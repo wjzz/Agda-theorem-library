@@ -37,6 +37,8 @@ lem-length-map : ∀ {A B : Set} (f : A → B) (l : List A) → length l ≡ len
 lem-length-map f [] = refl
 lem-length-map f (x ∷ xs) = cong suc (lem-length-map f xs)
 
+{- BASE lists lem-length-app lem-length-map -}
+
 {- ++ properties -}
 
 lem-app-l-nil : ∀ {A : Set}(l : List A) → l ++ [] ≡ l
@@ -47,6 +49,7 @@ lem-app-assoc : ∀ {A : Set}(l1 l2 l3 : List A) → l1 ++ (l2 ++ l3) ≡ (l1 ++
 lem-app-assoc [] l2 l3 = refl
 lem-app-assoc (x ∷ xs) l2 l3 = cong (λ l → x ∷ l) (lem-app-assoc xs l2 l3)
 
+{- BASE lists lem-app-l-nil lem-app-assoc -}
 
 {- frev properties (auxillary lemmas for reverse -}
 
@@ -85,6 +88,8 @@ lem-reverse-app (x ∷ l1) l2 = begin
                                (reverse l2 ++ reverse l1) ++ (x ∷ [])  ≡⟨ sym (lem-app-assoc (reverse l2) (reverse l1) (x ∷ [])) ⟩ 
                                 reverse l2 ++ (reverse l1 ++ (x ∷ [])) ≡⟨ cong (λ l → reverse l2 ++ l) (sym (lem-reverse-head x l1)) ⟩ 
                                (reverse l2 ++ reverse (x ∷ l1)) ∎ 
+
+{- BASE lists lem-reverse-head lem-reverse-len lem-reverse-app -}
 
 -------------------------------------------------
 --  List membership relation and member query  --
