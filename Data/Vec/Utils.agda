@@ -4,15 +4,19 @@
 module Data.Vec.Utils where
 
 open import Data.Empty
+open import Data.Fin using (Fin; zero; suc)
 open import Data.Nat
 open import Data.Nat.Theorems
 open import Data.Product hiding (map)
 open import Data.Vec
+open import Data.Sum hiding (map)
+open import Data.Maybe
 
 open import Relation.Binary
 open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary
 
+open import Data.Empty
 
 ----------------------
 --  Non-membership  --
@@ -22,6 +26,63 @@ infix 4 _∉_
 
 _∉_ : {A : Set} {n : ℕ} → A → Vec A n → Set
 a ∉ v = ¬ (a ∈ v)
+
+-------------------------
+--  Membership lemmas  --
+-------------------------
+
+member-here-or-there : ∀ {a}{A : Set a}
+                     → {n : ℕ}
+                     → Decidable (_≡_ {A = A})
+                     → {a b : A}
+                     → {v : Vec A n}
+                     → a ∈ (b ∷ v)
+                     → a ≡ b ⊎ a ∈ v
+
+member-here-or-there decEq here = inj₁ refl
+member-here-or-there decEq (there inn) = inj₂ inn
+
+-------------------------------
+--  Membership is decidable  --
+-------------------------------
+
+member? : ∀ {a}{A : Set a}
+        → {n : ℕ}
+        → Decidable (_≡_ {A = A})
+        → (a : A)
+        → (v : Vec A n)
+        → Dec (a ∈ v)
+
+member? decEq a [] = no (λ ())
+member? decEq a (b ∷ bs)  with decEq a b
+member? decEq a (.a ∷ bs) | yes refl = yes here
+... | no ¬eq with member? decEq a bs
+... | yes later = yes (there later)
+... | no not-in = no (λ inn → [ ¬eq , not-in ]′ (member-here-or-there decEq inn))
+
+
+findKey : ∀ {A B : Set}
+        → {n : ℕ}
+        → Decidable (_≡_ {A = A})
+        → A
+        → Vec (A × B) n
+        → Maybe B
+
+findKey decEq a [] = nothing
+findKey decEq a ((x , y) ∷ xs) with decEq a x
+... | yes _ = just y
+... | no _  = findKey decEq a xs
+
+
+-------------------------------------------------------------------------------
+--  Returns the element at the given index along with a proof of membership  --
+-------------------------------------------------------------------------------
+
+_!_ : {A : Set} {n : ℕ} → (v : Vec A n) → Fin n → Σ[ a ∶ A ] (a ∈ v)
+[] ! ()
+(x ∷ xs) ! zero  = x , here
+(x ∷ xs) ! suc i with xs ! i
+(x ∷ xs) ! suc i | a , p = a , there p
 
 --------------------------------------------------------------
 --  Applies a given function to all elements of a vector.   
@@ -144,3 +205,69 @@ lem-subvector-delete a (y ∷ x ∷ xs) (there x∈xs) = here y (lem-subvector-d
 lem-delete-distinct-is-distinct : {A : Set} {n : ℕ} (a : A) (v : Vec A (suc n)) (p : a ∈ v) 
                                 →  distinct-v v → distinct-v (delete a v p)
 lem-delete-distinct-is-distinct a v p x = lem-⊂-distinct (delete a v p) v x (lem-subvector-delete a v p)
+
+---------------------------
+--  Vector permutations  --
+---------------------------
+
+infix 3 _≈_
+
+data _≈_ {l}{A : Set l} : ∀ {n} → Vec A n → Vec A n → Set l where
+
+  nil : [] ≈ []
+
+  swp : ∀ {a b n} {Γ : Vec A n} 
+      → a ∷ b ∷ Γ ≈ b ∷ a ∷ Γ
+
+  cns : ∀ {a n} {Γ Γ' : Vec A n} 
+      → Γ ≈ Γ' 
+      → a ∷ Γ ≈ a ∷ Γ'
+
+  trn : ∀ {n}{Γ1 Γ2 Γ3 : Vec A n} 
+      → Γ1 ≈ Γ2 
+      → Γ2 ≈ Γ3
+      → Γ1 ≈ Γ3
+
+
+perm-reflexive : ∀ {l}{A : Set l} → {n : ℕ} → (Γ : Vec A n) 
+               → Γ ≈ Γ
+perm-reflexive []       = nil
+perm-reflexive (x ∷ xs) = cns (perm-reflexive xs)
+
+
+perm-symmetric : ∀ {l}{A : Set l} → {n : ℕ} → {Γ Γ' : Vec A n} 
+               → Γ  ≈ Γ' 
+               → Γ' ≈ Γ
+perm-symmetric nil        = nil
+perm-symmetric swp        = swp
+perm-symmetric (cns x)    = cns (perm-symmetric x)
+perm-symmetric (trn x x₁) = trn (perm-symmetric x₁) (perm-symmetric x)
+
+
+-- each element in a permutation can be found in the other vector at some position
+
+perm-lookup : ∀ {l}{A : Set l}{n}
+            → {Γ Γ' : Vec A n}
+            → {x : A}
+            → (i : Fin n)
+            → Γ ≈ Γ'
+            → lookup i Γ ≡ x
+            → Σ[ j ∶ Fin n ](lookup j Γ' ≡ x)
+
+perm-lookup () nil eq
+perm-lookup zero          swp eq = suc zero , eq
+perm-lookup (suc zero)    swp eq = zero , eq
+perm-lookup (suc (suc i)) swp eq = suc (suc i) , eq
+perm-lookup zero (cns perm) eq = zero , eq
+perm-lookup (suc i) (cns perm) eq with perm-lookup i perm eq
+... | j , rec = suc j , rec
+perm-lookup i (trn perm1 perm2) eq with perm-lookup i perm1 eq
+... | j , rec = perm-lookup j perm2 rec
+
+
+-- preimage of a permutation pair is a permutation pair
+{-
+perm-map-inv : 
+             → map f v1 ≈ map f v2
+             → v1 ≈ v2
+-}

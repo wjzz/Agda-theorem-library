@@ -1,6 +1,7 @@
 module Data.Nat.Theorems where
 
 open import Data.Nat hiding (compare)
+open import Data.Nat.Properties
 
 open import Data.Empty
 open import Data.Product
@@ -237,10 +238,10 @@ lem-≤-l+ .(suc m) (suc n) .(suc n') (s≤s {m} {n'} m≤n) = s≤s (≤-cong (
   ≤-cong : ∀ {x y z} → x ≤ y → y ≡ z → x ≤ z
   ≤-cong x<=y refl = x<=y
 
-lem-≤-+r : ∀ (m p q : ℕ) → m ≤ q → m ≤ q + p
-lem-≤-+r .0 n q z≤n = z≤n
-lem-≤-+r .(suc m) zero .(suc n) (s≤s {m} {n} m≤n) = s≤s (lem-≤-+r m zero n m≤n)
-lem-≤-+r .(suc m) (suc n) .(suc n') (s≤s {m} {n'} m≤n) = s≤s (lem-≤-+r m (suc n) n' m≤n)
+lem-≤-+r : ∀ {m q} p → m ≤ q → m ≤ q + p
+lem-≤-+r q z≤n = z≤n
+lem-≤-+r zero    (s≤s m≤n) = s≤s (lem-≤-+r zero m≤n)
+lem-≤-+r (suc n) (s≤s m≤n) = s≤s (lem-≤-+r (suc n) m≤n)
 
 lem-≤-cong2 : ∀ {n m p q} → n ≤ p → m ≤ q → n + m ≤ p + q
 lem-≤-cong2 {.zero} {m} {p} {q} z≤n x' = lem-≤-l+ m p q x'
@@ -248,7 +249,7 @@ lem-≤-cong2 (s≤s m≤n) x' = s≤s (lem-≤-cong2 m≤n x')
 
 lem-<-cong : ∀ {n m p q} → n < p → m < q → (n ⊔ m) < p + q
 lem-<-cong {n} {m} p1 p2 with lem-⊔ n m 
-lem-<-cong {n} {m} {p} {q} p1 p2 | inj₁ x rewrite x = lem-≤-+r (suc n) q p p1
+lem-<-cong {q = q} p1 p2 | inj₁ x rewrite x = lem-≤-+r q p1
 lem-<-cong {n} {m} {p} {q} p1 p2 | inj₂ y rewrite y = lem-≤-l+ (suc m) p q p2
 
 {- BASE arith lem-⊔ lem-≤-l+ lem-≤-+r lem-≤-cong2 lem-<-cong -}
@@ -279,8 +280,35 @@ lem-both-≤-<-impossible {n} {m} x x' = lem-suc-n-n-impossible (lem-≤-trans x
 lem-≤-eq : ∀ {n n' m : ℕ} → n ≡ n' → n ≤ m → n' ≤ m
 lem-≤-eq refl p = p
 
+lem-≤-eq-r : ∀ {n m m' : ℕ} → n ≤ m → m ≡ m' → n ≤ m'
+lem-≤-eq-r p refl = p
+
 lem-≤-eq-refl : ∀ {n m} → n ≡ m → n ≤ m
 lem-≤-eq-refl refl = lem-≤-refl
+
+lem-eq-le : ∀ {n m : ℕ} → n ≡ m → n < m -> ⊥
+lem-eq-le eq le = lem-both-≤-<-impossible (lem-≤-eq-refl (sym eq)) le
+
+lem-≤-n-suc-n+n : ∀ n → n ≤ suc (n + n)
+lem-≤-n-suc-n+n n = ≤-steps (suc n) lem-≤-refl
+
+lem-≤-n-suc-suc-n+n : ∀ n → n ≤ suc (suc (n + n))
+lem-≤-n-suc-suc-n+n n = ≤-steps (suc (suc n)) lem-≤-refl
+
+lem-not-suc-n+n<n : ∀ n → ¬ (suc (n + n) ≤ n)
+lem-not-suc-n+n<n n le = lem-both-≤-<-impossible (≤-steps n lem-≤-refl) le 
+
+lem-not-suc-suc-n+n<n : ∀ n → ¬ (suc (suc (n + n)) ≤ n)
+lem-not-suc-suc-n+n<n n le = lem-both-≤-<-impossible (lem-≤-n-suc-n+n n) le
+
+lem-<-total : ∀ m n → m < n ⊎ m ≡ n ⊎ n < m 
+lem-<-total zero zero = inj₂ (inj₁ refl)
+lem-<-total zero (suc n) = inj₁ (s≤s z≤n)
+lem-<-total (suc n) zero = inj₂ (inj₂ (s≤s z≤n))
+lem-<-total (suc n) (suc m) with lem-<-total n m
+lem-<-total (suc n) (suc m)  | inj₁ x = inj₁ (s≤s x)
+lem-<-total (suc .m) (suc m) | inj₂ (inj₁ refl) = inj₂ (inj₁ refl)
+lem-<-total (suc n) (suc m)  | inj₂ (inj₂ y) = inj₂ (inj₂ (s≤s y))
 
 {- BASE arith lem-≤-cases lem-≤-cases-ext lem-suc-n-n-impossible lem-≤-eq lem-≤-eq-refl -}
 
@@ -323,6 +351,10 @@ safeMinus .(suc m) .(suc n) (s≤s {m} {n} m≤n) | k , n≡m+k = k , cong suc n
 --  Properties of unsafe substraction  --
 -----------------------------------------
 
+lem-minus-≤ : ∀ m → m ∸ 1 ≤ m
+lem-minus-≤ zero = z≤n
+lem-minus-≤ (suc n) = lem-≤-suc n
+
 lem-minus-positive : ∀ (n k : ℕ) → n < k → 1 ≤ k ∸ n
 lem-minus-positive .0 .(suc n) (s≤s {.0} {n} z≤n) = s≤s z≤n
 lem-minus-positive .(suc m) .(suc (suc n)) (s≤s (s≤s {m} {n} m≤n)) = lem-minus-positive m (suc n) (s≤s m≤n) 
@@ -331,35 +363,9 @@ lem-minus-eq : ∀ (n k : ℕ) → k ≤ n → suc (n ∸ k) ≡ (suc n ∸ k)
 lem-minus-eq n .0 z≤n = refl
 lem-minus-eq .(suc n) .(suc m) (s≤s {m} {n} m≤n) = lem-minus-eq n m m≤n
 
+lem-minus-one : ∀ {n} m → 1 ≤ n → n + m ≡ (suc (n ∸ 1) + m)
+lem-minus-one m (s≤s m≤n) = refl
+
 {- BASE arith lem-minus-positive lem-minus-eq -}
 {- BASE minus lem-minus-positive lem-minus-eq -}
-
--------------------------------------
---  ≤ and ≤' (copied from stdlib)  --
--------------------------------------
-
--- Converting between ≤ and ≤′
-
-≤-step : ∀ {m n} → m ≤ n → m ≤ 1 + n
-≤-step z≤n       = z≤n
-≤-step (s≤s m≤n) = s≤s (≤-step m≤n)
-
-≤′⇒≤ : _≤′_ ⇒ _≤_
-≤′⇒≤ ≤′-refl        = lem-≤-refl
-≤′⇒≤ (≤′-step m≤′n) = ≤-step (≤′⇒≤ m≤′n)
-
-z≤′n : ∀ {n} → zero ≤′ n
-z≤′n {zero}  = ≤′-refl
-z≤′n {suc n} = ≤′-step z≤′n
-
-s≤′s : ∀ {m n} → m ≤′ n → suc m ≤′ suc n
-s≤′s ≤′-refl        = ≤′-refl
-s≤′s (≤′-step m≤′n) = ≤′-step (s≤′s m≤′n)
-
-≤⇒≤′ : _≤_ ⇒ _≤′_
-≤⇒≤′ z≤n       = z≤′n
-≤⇒≤′ (s≤s m≤n) = s≤′s (≤⇒≤′ m≤n)
-
-<⇒<′ : _<_ ⇒ _<′_
-<⇒<′ = ≤⇒≤′
 

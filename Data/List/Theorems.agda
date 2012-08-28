@@ -6,13 +6,13 @@ open import Data.Empty
 open import Data.Nat
 open import Data.Nat.Theorems
 open import Data.List
-open import Data.Product 
-open import Data.Sum
+open import Data.Product hiding (map)
+open import Data.Sum hiding (map)
 open import Function
 
 open import Relation.Nullary
 open import Relation.Binary
-open import Relation.Binary.PropositionalEquality
+open import Relation.Binary.PropositionalEquality hiding ([_])
 
 open ≡-Reasoning
 
@@ -48,6 +48,10 @@ lem-app-l-nil (x ∷ xs) = cong (λ l → x ∷ l) (lem-app-l-nil xs)
 lem-app-assoc : ∀ {A : Set}(l1 l2 l3 : List A) → l1 ++ (l2 ++ l3) ≡ (l1 ++ l2) ++ l3
 lem-app-assoc [] l2 l3 = refl
 lem-app-assoc (x ∷ xs) l2 l3 = cong (λ l → x ∷ l) (lem-app-assoc xs l2 l3)
+
+lem-app-map : {A B : Set}(f : A → B)(xs ys : List A) → map f (xs ++ ys) ≡ map f xs ++ map f ys
+lem-app-map f [] ys = refl
+lem-app-map f (x ∷ xs) ys = cong (_∷_ (f x)) (lem-app-map f xs ys)
 
 {- BASE lists lem-app-l-nil lem-app-assoc -}
 
